@@ -43,7 +43,7 @@ The first matching rule wins; unmatched commands are allowed.`,
 			if len(args) > 0 {
 				return cli.NewInvalidCommandError(args[0], ctx)
 			}
-			configDir, policy, err := loadSafetyPolicy(ctx)
+			configDir, policy, err := loadEffectiveSafetyPolicy(ctx)
 			if err != nil {
 				return err
 			}

@@ -27,6 +27,7 @@ import (
 )
 
 var stdinReader io.Reader = os.Stdin
+var isInteractive = IsInteractive
 
 func PromptConfirm(w io.Writer, prompt string) bool {
 	_, _ = fmt.Fprint(w, prompt)
@@ -66,18 +67,24 @@ func CheckAndConfirm(ctx *cli.Context, policy *Policy, cmd CommandInfo, skipConf
 			// --yes or env: treat as already confirmed
 			break
 		}
-		if !IsInteractive() {
+		if !isInteractive() {
 			return fmt.Errorf(i18n.T(
 				"Safety policy requires confirmation for: %s %s\n"+
+					"This is a local CLI confirmation only; it does not grant cloud permissions or verify external approval. Cloud permissions are controlled by RAM.\n"+
 					"This operation cannot run in non-interactive mode without explicit approval. "+
 					"If you are an agent, ask the user whether this operation is allowed; after they confirm (e.g. reply yes or 确认), re-run the same command with --yes.",
 				"安全策略要求确认以下操作：%s %s\n"+
+					"这只是 CLI 本地确认，不会授予云端权限，也不会校验外部审批结果。云端权限由 RAM 控制。\n"+
 					"当前为非交互环境，无法自动确认。若调用方为智能体，请先向用户说明并征得同意；用户同意后（可在对话中回复 yes 或「确认」），再使用 --yes 重新执行同一命令。",
 			).GetMessage(), cmd.Product, displayCommand(cmd))
 		}
 		prompt := fmt.Sprintf(i18n.T(
-			"Safety policy requires confirmation for: %s %s\nType 'yes' to proceed, anything else to cancel: ",
-			"安全策略要求确认以下操作: %s %s\n输入 'yes' 继续，其他任意输入取消: ",
+			"Safety policy requires confirmation for: %s %s\n"+
+				"This is a local CLI confirmation only; it does not grant cloud permissions or verify external approval. Cloud permissions are controlled by RAM.\n"+
+				"Type 'yes' to proceed, anything else to cancel: ",
+			"安全策略要求确认以下操作: %s %s\n"+
+				"这只是 CLI 本地确认，不会授予云端权限，也不会校验外部审批结果。云端权限由 RAM 控制。\n"+
+				"输入 'yes' 继续，其他任意输入取消: ",
 		).GetMessage(), cmd.Product, displayCommand(cmd))
 		if !PromptConfirm(ctx.Stderr(), prompt) {
 			return errors.New(i18n.T(
