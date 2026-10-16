@@ -43,7 +43,7 @@ The first matching rule wins; unmatched commands are allowed.`,
 			if len(args) > 0 {
 				return cli.NewInvalidCommandError(args[0], ctx)
 			}
-			configDir, policy, err := loadSafetyPolicy(ctx)
+			configDir, policy, err := loadEffectiveSafetyPolicy(ctx)
 			if err != nil {
 				return err
 			}
@@ -245,7 +245,7 @@ func doSafetyPolicyAdd(ctx *cli.Context, configDir string, policy *safety.Policy
 	for i := range policy.Rules {
 		if policy.Rules[i].Pattern == pattern {
 			policy.Rules[i].Action = action
-			return safety.SavePolicy(configDir, policy)
+			return saveSafetyPolicyWithStyleNotice(ctx, configDir, policy, pattern)
 		}
 	}
 
@@ -253,7 +253,24 @@ func doSafetyPolicyAdd(ctx *cli.Context, configDir string, policy *safety.Policy
 		Pattern: pattern,
 		Action:  action,
 	})
-	return safety.SavePolicy(configDir, policy)
+	return saveSafetyPolicyWithStyleNotice(ctx, configDir, policy, pattern)
+}
+
+// saveSafetyPolicyWithStyleNotice preserves exactly the rules chosen by the user.
+// PascalCase and kebab-case names are independent patterns for compatibility.
+// Do not infer aliases by changing case or removing hyphens: plugin names and
+// wildcard patterns may have different meanings. This advisory does not claim
+// to have resolved an API or verified coverage, and must never add a rule or
+// prompt for stdin in scripts. Emit it only after persistence succeeds, on stderr.
+func saveSafetyPolicyWithStyleNotice(ctx *cli.Context, configDir string, policy *safety.Policy, pattern string) error {
+	if err := safety.SavePolicy(configDir, policy); err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(ctx.Stderr(), i18n.T(
+		"Rule %q saved. Safety rules match command names as entered; PascalCase and kebab-case names are not automatically linked. Check that your rules cover each command name you use, including when using wildcards, and add separate rules where needed.\n",
+		"已保存规则 %q。安全规则按输入的命令名称匹配，不会自动关联 PascalCase（大驼峰）和 kebab-case（短横线）名称。请检查规则是否覆盖所使用的每种命令名称，包括通配符规则，并按需补充配置。\n",
+	).GetMessage(), pattern)
+	return nil
 }
 
 func doSafetyPolicyRemove(ctx *cli.Context, configDir string, policy *safety.Policy) error {
